@@ -2,8 +2,10 @@
 
 ## IMPORTS ##
 import curses
+import logging
 import time
 import sys
+import traceback
 import os
 from sqlalchemy import *
 
@@ -16,6 +18,17 @@ x = 1
 last_x = 0
 term_size_change = False
 option_window_open = False
+
+MAIN_NAME = "sqlcrush"
+logger = logging.getLogger(MAIN_NAME)
+logger.setLevel(logging.DEBUG)
+#ch = logging.StreamHandler()
+ch = logging.FileHandler(MAIN_NAME+".log")
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s')
+# add formatter to ch
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 ## FUNCTIONS ##
 #initialize the curses window and return scr
@@ -332,11 +345,14 @@ while x != ord("q"):        # quit on [q]
                             n = 3
                             updatedData = 0
                         except:
+                            tb = sys.exc_info()
                             n = n + 1
                             if n == 3:
                                 #if there is a failure, it exits quickly after closing ncurses
                                 term_scr(scr)
-                                print("Critical failure")
+                                logger.error("Critical failure", exc_info=True)
+                                logger.error("".join(traceback.format_exception(tb[0], tb[1], tb[2])))
+
                                 time.sleep(1)
                                 sys.exit()
 
@@ -601,9 +617,13 @@ while x != ord("q"):        # quit on [q]
                                     q = q + 1
                                     continue
                                 if 2+12*m < scr_dim[1] - 16 - 12:
-                                    if len(str(entry[q])) >= 12:
-                                        short_printing = str(entry[q])[0:9].replace('\n', ' ') + ".."
-                                        full_printing = str(entry[q]).replace('\n', ' ')
+                                    if type(entry[q]) is unicode:
+                                        ent = entry[q]
+                                    else:
+                                        ent = str(entry[q])
+                                    if len(ent) >= 12:
+                                        short_printing = ent[0:9].replace('\n', ' ') + ".."
+                                        full_printing = ent.replace('\n', ' ')
                                         if (cursor_sub[0] + cursor_sub[1] == p + 2 and find_counter == 0) or cursor_sub[0] + cursor_sub[1] == find_counter + 1:
                                             if cursor_sub[2] == m+1 or cursor_sub[2] == 0:
                                                 scr_show_main.addstr(n+2, 2+12*m, short_printing, curses.A_REVERSE)
@@ -919,8 +939,10 @@ while x != ord("q"):        # quit on [q]
             elif current_screen == 2:
                 current_screen = 1
     except:
+        tb = sys.exc_info()
         term_scr(scr)
-        print("CRITICAL FAILURE...")
+        logger.error("CRITICAL FAILURE...", exc_info=True)
+        logger.error("".join(traceback.format_exception(tb[0], tb[1], tb[2])))
         time.sleep(2)
         break
     #terminating the window
